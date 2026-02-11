@@ -8,15 +8,18 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 
+# Задержка между сообщениями в каскаде — всегда 5 секунд (не берём из env, чтобы не зависеть от настроек Vercel)
+CASCADE_DELAY_SECONDS = 5
+
 from bot.keyboards import payment_keyboard
 from bot.messages import (
     AFTER_SUBSCRIPTION,
-    DELAYED_MESSAGE,
+    DELAYED_MESSAGE_INTRO,
+    DELAYED_MESSAGE_REST,
     SUBSCRIBED_CONFIRM,
     VIDEO_TRAINING_TITLE,
 )
 from config.settings import (
-    DELAY_SECONDS,
     PAYMENT_SIMULATION,
     SELLAMUS_PAYMENT_LINK_RF,
     SELLAMUS_PAYMENT_LINK_WORLD,
@@ -34,12 +37,12 @@ async def callback_check_subscription(update: Update, context: ContextTypes.DEFA
 
     chat_id = query.message.chat_id
 
-    # Короткое подтверждение, через DELAY_SECONDS первое сообщение, ещё через DELAY_SECONDS второе
+    # Каскад: подтверждение → 5 сек → подарки → 5 сек → интро про 490р → 5 сек → остаток с кнопками
     try:
         await context.bot.send_message(chat_id=chat_id, text=SUBSCRIBED_CONFIRM)
     except Exception as e:
         logger.exception("Failed to send SUBSCRIBED_CONFIRM: %s", e)
-    await asyncio.sleep(DELAY_SECONDS)
+    await asyncio.sleep(CASCADE_DELAY_SECONDS)
     try:
         await context.bot.send_message(
             chat_id=chat_id,
@@ -47,7 +50,12 @@ async def callback_check_subscription(update: Update, context: ContextTypes.DEFA
         )
     except Exception as e:
         logger.exception("Failed to send first message: %s", e)
-    await asyncio.sleep(DELAY_SECONDS)
+    await asyncio.sleep(CASCADE_DELAY_SECONDS)
+    try:
+        await context.bot.send_message(chat_id=chat_id, text=DELAYED_MESSAGE_INTRO)
+    except Exception as e:
+        logger.exception("Failed to send DELAYED_MESSAGE_INTRO: %s", e)
+    await asyncio.sleep(CASCADE_DELAY_SECONDS)
     try:
         keyboard = payment_keyboard(
             SELLAMUS_PAYMENT_LINK_RF,
@@ -56,7 +64,7 @@ async def callback_check_subscription(update: Update, context: ContextTypes.DEFA
         )
         await context.bot.send_message(
             chat_id=chat_id,
-            text=DELAYED_MESSAGE,
+            text=DELAYED_MESSAGE_REST,
             reply_markup=keyboard,
         )
     except Exception as e:
