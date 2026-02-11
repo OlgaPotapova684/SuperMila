@@ -31,10 +31,8 @@ if not Path(EXPERT_PHOTO_PATH).is_absolute():
 else:
     EXPERT_PHOTO_FULL = Path(EXPERT_PHOTO_PATH)
 
-# Таймер: задержка между сообщениями (секунды). 120 = 2 минуты
-DELAY_SECONDS = int(os.getenv("DELAY_SECONDS", "120"))
-# На Vercel (serverless) таймер не работает — поставь True, тогда оба сообщения уйдут сразу подряд
-SEND_WITHOUT_DELAY = os.getenv("SEND_WITHOUT_DELAY", "True").lower() in ("true", "1", "yes")
+# Задержка между сообщениями (секунды). 5 = для проверки, 120 = 2 минуты (на VPS)
+DELAY_SECONDS = int(os.getenv("DELAY_SECONDS", "5"))
 
 # Оплата
 PAYMENT_SIMULATION = os.getenv("PAYMENT_SIMULATION", "True").lower() in ("true", "1", "yes")

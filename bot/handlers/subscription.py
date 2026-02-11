@@ -25,38 +25,9 @@ from config.settings import (
     PAYMENT_SIMULATION,
     SELLAMUS_PAYMENT_LINK_RF,
     SELLAMUS_PAYMENT_LINK_WORLD,
-    SEND_WITHOUT_DELAY,
 )
 
 logger = logging.getLogger(__name__)
-
-
-async def _send_first_then_second(
-    context: ContextTypes.DEFAULT_TYPE, chat_id: int
-) -> None:
-    """Через 2 мин — первое сообщение (Видео-тренировка + подарки), ещё через 2 мин — второе (про 490р и кнопки оплаты)."""
-    await asyncio.sleep(DELAY_SECONDS)
-    try:
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=f"{VIDEO_TRAINING_TITLE}\n\n{AFTER_SUBSCRIPTION}",
-        )
-    except Exception:
-        pass
-    await asyncio.sleep(DELAY_SECONDS)
-    keyboard = payment_keyboard(
-        SELLAMUS_PAYMENT_LINK_RF,
-        SELLAMUS_PAYMENT_LINK_WORLD,
-        PAYMENT_SIMULATION,
-    )
-    try:
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=DELAYED_MESSAGE,
-            reply_markup=keyboard,
-        )
-    except Exception:
-        pass
 
 
 async def callback_check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -80,32 +51,30 @@ async def callback_check_subscription(update: Update, context: ContextTypes.DEFA
         )
         return
 
-    # Подписан — сразу короткое подтверждение
+    # Подписан — короткое подтверждение, через DELAY_SECONDS первое сообщение, ещё через DELAY_SECONDS второе (всё в одном запросе, чтобы работало на Vercel)
     try:
         await context.bot.send_message(chat_id=chat_id, text=SUBSCRIBED_CONFIRM)
     except Exception as e:
         logger.exception("Failed to send SUBSCRIBED_CONFIRM: %s", e)
-    if SEND_WITHOUT_DELAY:
-        # На Vercel serverless таймер не живёт после ответа — отправляем оба сообщения сразу
-        try:
-            first_text = f"{VIDEO_TRAINING_TITLE}\n\n{AFTER_SUBSCRIPTION}"
-            await context.bot.send_message(chat_id=chat_id, text=first_text)
-        except Exception as e:
-            logger.exception("Failed to send first message: %s", e)
-        await asyncio.sleep(2)
-        try:
-            keyboard = payment_keyboard(
-                SELLAMUS_PAYMENT_LINK_RF,
-                SELLAMUS_PAYMENT_LINK_WORLD,
-                PAYMENT_SIMULATION,
-            )
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=DELAYED_MESSAGE,
-                reply_markup=keyboard,
-            )
-        except Exception as e:
-            logger.exception("Failed to send second message: %s", e)
-    else:
-        # На VPS (run_bot.py): по таймеру через 2 мин первый блок, ещё через 2 мин второй
-        asyncio.create_task(_send_first_then_second(context, chat_id))
+    await asyncio.sleep(DELAY_SECONDS)
+    try:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"{VIDEO_TRAINING_TITLE}\n\n{AFTER_SUBSCRIPTION}",
+        )
+    except Exception as e:
+        logger.exception("Failed to send first message: %s", e)
+    await asyncio.sleep(DELAY_SECONDS)
+    try:
+        keyboard = payment_keyboard(
+            SELLAMUS_PAYMENT_LINK_RF,
+            SELLAMUS_PAYMENT_LINK_WORLD,
+            PAYMENT_SIMULATION,
+        )
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=DELAYED_MESSAGE,
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        logger.exception("Failed to send second message: %s", e)
