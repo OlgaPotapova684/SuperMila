@@ -1,8 +1,12 @@
 """
 Проверка подписки пользователя на канал.
 """
+import logging
+
 from telegram import Bot
 from telegram.constants import ChatMemberStatus
+
+logger = logging.getLogger(__name__)
 
 
 async def is_user_subscribed(bot: Bot, channel_id: str, user_id: int) -> bool:
@@ -18,5 +22,11 @@ async def is_user_subscribed(bot: Bot, channel_id: str, user_id: int) -> bool:
             ChatMemberStatus.ADMINISTRATOR,
             ChatMemberStatus.MEMBER,
         )
-    except Exception:
+    except Exception as e:
+        logger.warning(
+            "Subscription check failed: channel_id=%s user_id=%s error=%s",
+            channel_id,
+            user_id,
+            str(e),
+        )
         return False
